@@ -78,7 +78,8 @@ QNetworkReply * MyNetworkAccessManager::createRequest(Operation op, const QNetwo
 		return QNetworkAccessManager::createRequest(op, r2, outgoingData);
 	}
 
-	if (req.url().scheme() == "file" && settings.blockLocalFileAccess) {
+	bool isLocalFileAccess = req.url().scheme().length() <= 1 || req.url().scheme() == "file";
+	if (isLocalFileAccess && settings.blockLocalFileAccess) {
 		bool ok=false;
 		QString path = QFileInfo(req.url().toLocalFile()).canonicalFilePath();
 		QString old = "";
@@ -121,6 +122,7 @@ bool MyQWebPage::javaScriptConfirm(QWebFrame *, const QString & msg) {
 bool MyQWebPage::javaScriptPrompt(QWebFrame *, const QString & msg, const QString & defaultValue, QString * result) {
 	resource.warning(QString("Javascript prompt: %1 (answered %2)").arg(msg,defaultValue));
 	result = (QString*)&defaultValue;
+	Q_UNUSED(result);
 	return true;
 }
 
@@ -296,6 +298,7 @@ void ResourceObject::loadDone() {
  * and password supplied on the command line
  */
 void ResourceObject::handleAuthenticationRequired(QNetworkReply *reply, QAuthenticator *authenticator) {
+	Q_UNUSED(reply);
 
 	// XXX: Avoid calling 'reply->abort()' from within this signal.
 	//      As stated by doc, request would be finished when no

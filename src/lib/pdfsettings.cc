@@ -119,6 +119,7 @@ struct DLL_LOCAL ReflectImpl<PdfGlobal>: public ReflectClass {
 		WKHTMLTOPDF_REFLECT(outline);
 		WKHTMLTOPDF_REFLECT(dumpOutline);
 		WKHTMLTOPDF_REFLECT(out);
+		WKHTMLTOPDF_REFLECT(dumpRenderTree);
 		WKHTMLTOPDF_REFLECT(documentTitle);
 		WKHTMLTOPDF_REFLECT(useCompression);
 		WKHTMLTOPDF_REFLECT(margin);
@@ -283,7 +284,7 @@ UnitReal strToUnitReal(const char * o, bool * ok) {
 	else if (!strcasecmp(o+i,"point") || !strcasecmp(o+i,"pt"))
 		u=QPrinter::Point;
 	else {
-		if (ok) ok=false;
+		if (ok) *ok=false;
 		return UnitReal(QString(o).left(i).toDouble()*s, u);
 	}
 	return UnitReal(QString(o).left(i).toDouble(ok)*s, u);
@@ -378,11 +379,12 @@ PdfGlobal::PdfGlobal():
 	outlineDepth(4),
 	dumpOutline(""),
 	out(""),
+	dumpRenderTree(""),
 	documentTitle(""),
 	useCompression(true),
+	viewportSize(""),
 	imageDPI(600),
-	imageQuality(94),
-	viewportSize(""){};
+	imageQuality(94){};
 
 TableOfContent::TableOfContent():
 	useDottedLines(true),

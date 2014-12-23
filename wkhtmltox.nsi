@@ -3,7 +3,11 @@
 
 Name             "wkhtmltox ${VERSION}"
 OutFile          "static-build\wkhtmltox-${VERSION}_${TARGET}.exe"
+!if "${ARCH}" == "win64"
 InstallDir       "$PROGRAMFILES64\wkhtmltopdf"
+!else
+InstallDir       "$PROGRAMFILES\wkhtmltopdf"
+!endif
 VIProductVersion "${SIMPLE_VERSION}.0"
 VIAddVersionKey  "ProductName"     "wkhtmltox"
 VIAddVersionKey  "FileDescription" "wkhtmltox ${VERSION}"
@@ -33,6 +37,9 @@ Function ${un}DeleteFiles
   Delete "$INSTDIR\wkhtmltopdf.exe"
   Delete "$INSTDIR\wkhtmltoimage.exe"
 ; remove as per current installer layout
+  Delete "$INSTDIR\bin\libgcc_s_sjlj-1.dll"
+  Delete "$INSTDIR\bin\libgcc_s_seh-1.dll"
+  Delete "$INSTDIR\bin\libstdc++-6.dll"
   Delete "$INSTDIR\bin\wkhtmltoimage.exe"
   Delete "$INSTDIR\bin\wkhtmltopdf.exe"
   Delete "$INSTDIR\bin\wkhtmltox.dll"
@@ -50,10 +57,28 @@ Function ${un}DeleteFiles
 FunctionEnd
 !macroend
 
+!macro CheckVCRedist
+!ifdef MSVC
+  InitPluginsDir
+  ClearErrors
+  ReadRegDWORD $R0 HKLM "SOFTWARE\Microsoft\DevDiv\vc\Servicing\12.0\RuntimeMinimum" "Install"
+  IfErrors need_vcruntime
+  IntCmp $R0 1 skip_vcruntime need_vcruntime need_vcruntime
+need_vcruntime:
+    File /oname=$PLUGINSDIR\vcredist.exe static-build\${TARGET}\vcredist.exe
+skip_vcruntime:
+!endif
+!macroend
+
 !insertmacro DeleteFiles ""
 !insertmacro DeleteFiles "un."
 
 Section "Install"
+!ifdef MSVC
+  IfFileExists "$PLUGINSDIR\vcredist.exe" 0 skip_vcruntime
+  ExecWait '"$PLUGINSDIR\vcredist.exe" /install /quiet /norestart' $R9
+skip_vcruntime:
+!endif
   Call DeleteFiles
 
   SetOutPath "$INSTDIR"
@@ -61,6 +86,9 @@ Section "Install"
   File static-build\${TARGET}\app\bin\wkhtmltoimage.exe
   File static-build\${TARGET}\app\bin\wkhtmltopdf.exe
   File static-build\${TARGET}\app\bin\wkhtmltox.dll
+!ifdef MINGW
+  File static-build\${TARGET}\app\bin\lib*.dll
+!endif
 
   SetOutPath "$INSTDIR\lib"
   File static-build\${TARGET}\app\bin\wkhtmltox.lib
@@ -85,13 +113,27 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
   Call un.DeleteFiles
   DeleteRegKey HKLM "Software\wkhtmltopdf"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\wkhtmltopdf"
 SectionEnd
 
 Function .onInit
+!if "${ARCH}" == "win32"
+    !insertmacro CheckVCRedist
   ${If} ${RunningX64}
     SetRegView 64
   ${EndIf}
+!endif
+!if "${ARCH}" == "win64"
+  ${If} ${RunningX64}
+    SetRegView 64
+    !insertmacro CheckVCRedist
+  ${Else}
+    Abort "Cannot install 64-bit binaries on a 32-bit OS"
+  ${EndIf}
+!endif
 FunctionEnd
